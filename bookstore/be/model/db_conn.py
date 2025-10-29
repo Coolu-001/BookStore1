@@ -1,9 +1,9 @@
-from be.model.store import get_db_conn
+from be.model import store
 from pymongo.errors import PyMongoError
 
 class DBConn:
     def __init__(self):
-        self.db = get_db_conn()
+        self.db = store.get_db_conn() # 获取数据库连接
 
     def user_id_exist(self, user_id: str) -> bool:
         try:
@@ -15,7 +15,7 @@ class DBConn:
     def book_id_exist(self, store_id: str, book_id: str) -> bool:
         try:
             return self.db["store"].find_one(
-                {"store_id": store_id, "book_id": book_id}
+                {"store_id": store_id, "books.book_id": book_id} #嵌套查询匹配
             ) is not None
         except PyMongoError as e:
             print(f"MongoDB 查询 book_id 失败: {e}")

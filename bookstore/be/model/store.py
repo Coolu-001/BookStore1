@@ -9,7 +9,6 @@ class Store:
 
     def __init__(self,uri="mongodb://localhost:27017/", db_name="bookstore"):
         """
-        初始化 MongoDB 数据库连接
         uri: MongoDB 连接地址
         db_name: 数据库名称
         """
@@ -25,28 +24,35 @@ class Store:
     def init_collections(self):
         collections = [
             "user",
-            "user_store",
+            "user_store", 
             "store",
             "new_order",
             "new_order_detail"
         ]
         try:
-            #创建用户集合
-            self.db.users.create_index([("user_id", 1)], unique=True)
-            #创建用户-商店集合
+            # 创建用户集合
+            self.db.user.create_index([("user_id", 1)], unique=True)
+            
+            # 创建用户-商店集合
             self.db.user_store.create_index(
-            [("user_id", 1), ("store_id", 1)], unique=True
-        )
-            #创建商店集合
-            self.db.stores.create_index(
-            [("store_id", 1), ("books.book_id", 1)], unique=True
-        )
-            #创建新订单集合
-            self.db.new_orders.create_index([("order_id", 1)], unique=True)
-            #创建新订单详细信息集合
-            self.db.new_order_details.create_index(
-            [("order_id", 1), ("book_id", 1)], unique=True
-        )
+                [("user_id", 1), ("store_id", 1)], unique=True
+            )
+            
+            # 创建商店集合(嵌套文档结构)
+            self.db.store.create_index(
+                [("store_id", 1), ("books.book_id", 1)], unique=True 
+            )
+            
+            # 创建新订单集合
+            self.db.new_order.create_index([("order_id", 1)], unique=True)
+            
+            # 创建新订单详细信息集合
+            self.db.new_order_detail.create_index(
+                [("order_id", 1), ("book_id", 1)], unique=True
+            )
+            
+            logging.info("数据库集合和索引初始化完成")
+        
         except PyMongoError as e:
             logging.error(f"MongoDB initialization error: {e}")
 
