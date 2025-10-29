@@ -172,6 +172,4 @@ Windows 执行测试参考视频：https://www.bilibili.com/video/BV1Lu4y1h7Pn/
 3. 完成前3点，通过全部测试用例且有较高的测试覆盖率，可得B
 4. 完成前2点的基础上，体现出第3 4点，可得A
 5. 以上均为参考，最后等级会根据最终的工作质量有所调整
-# BookStore-midterm
-# BookStore-midterm
-# BookStore1
+
