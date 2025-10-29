@@ -8,6 +8,8 @@ from be.view import seller
 from be.view import buyer
 from be.model.store import init_database, init_completed_event
 
+
+
 bp_shutdown = Blueprint("shutdown", __name__)
 
 

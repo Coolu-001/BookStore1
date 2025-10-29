@@ -1,5 +1,4 @@
 import logging
-import os
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 import threading
@@ -32,23 +31,22 @@ class Store:
             "new_order_detail"
         ]
         try:
-            for name in collections:
-                if name not in self.db.list_collection_names():
-                    self.db.create_collection(name)
-                    logging.info(f"已创建集合: {name}")
-
-                # 添加索引（防止重复）
-            self.db["user"].create_index("user_id", unique=True)
-            self.db["user_store"].create_index(
-                [("user_id", 1), ("store_id", 1)], unique=True
-            )
-            self.db["store"].create_index(
-                [("store_id", 1), ("book_id", 1)], unique=True
-            )
-            self.db["new_order"].create_index("order_id", unique=True)
-            self.db["new_order_detail"].create_index(
-                [("order_id", 1), ("book_id", 1)], unique=True
-            )
+            #创建用户集合
+            self.db.users.create_index([("user_id", 1)], unique=True)
+            #创建用户-商店集合
+            self.db.user_store.create_index(
+            [("user_id", 1), ("store_id", 1)], unique=True
+        )
+            #创建商店集合
+            self.db.stores.create_index(
+            [("store_id", 1), ("books.book_id", 1)], unique=True
+        )
+            #创建新订单集合
+            self.db.new_orders.create_index([("order_id", 1)], unique=True)
+            #创建新订单详细信息集合
+            self.db.new_order_details.create_index(
+            [("order_id", 1), ("book_id", 1)], unique=True
+        )
         except PyMongoError as e:
             logging.error(f"MongoDB initialization error: {e}")
 
@@ -62,19 +60,10 @@ init_completed_event = threading.Event()
 
 
 def init_database(uri="mongodb://localhost:27017/", db_name="bookstore"):
-    """
-    初始化全局数据库连接实例。
-    """
     global database_instance
-    database_instance = Store(uri=uri, db_name=db_name)
-    init_completed_event.set()
+    database_instance = Store()
 
 
 def get_db_conn():
-    """
-    获取全局数据库连接（数据库对象）
-    """
     global database_instance
-    if not database_instance:
-        raise RuntimeError("数据库未初始化，请先调用 init_database()。")
     return database_instance.get_db_conn()
