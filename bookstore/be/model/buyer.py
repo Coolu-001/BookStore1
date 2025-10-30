@@ -7,11 +7,13 @@ from typing import List, Tuple
 
 class Buyer(db_conn.DBConn):
     def __init__(self):
-        super().__init__()  # 初始化 MongoDB 数据库连接
+        super().__init__()  
 
     def new_order(self, user_id: str, store_id: str, id_and_count: List[Tuple[str, int]]):
         order_id = ""
         try:
+            if not id_and_count or any(count <= 0 for _, count in id_and_count):
+                return error.error_invalid_params("Invalid book list") + (order_id,)
             if not self.user_id_exist(user_id):
                 return error.error_non_exist_user_id(user_id) + (order_id,)
             if not self.store_id_exist(store_id):
@@ -23,7 +25,7 @@ class Buyer(db_conn.DBConn):
             total_price = 0
 
             for book_id, count in id_and_count:
-                book = self.db["store"].find_one({"store_id": store_id, "book_id": book_id})
+                book = self.db["store"].find_one({"store_id": store_id, "books.book_id": book_id})
                 if not book:
                     return error.error_non_exist_book_id(book_id) + (order_id,)
 
@@ -48,8 +50,8 @@ class Buyer(db_conn.DBConn):
 
                 # 更新库存
                 result = self.db["store"].update_one(
-                    {"store_id": store_id, "book_id": book_id, "stock_level": {"$gte": count}},
-                    {"$inc": {"stock_level": -count}},
+                    {"store_id": store_id, "books.book_id": book_id, "books.stock_level": {"$gte": count}},
+                    {"$inc": {"books.$.stock_level": -count}},
                 )
                 if result.modified_count == 0:
                     return error.error_stock_level_low(book_id) + (order_id,)
@@ -141,3 +143,4 @@ class Buyer(db_conn.DBConn):
             return 530, str(e)
 
         return 200, "ok"
+########待添加#####

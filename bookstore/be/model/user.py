@@ -1,7 +1,7 @@
 import jwt
 import time
 import logging
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import PyMongoError, DuplicateKeyError
 from be.model import error
 from be.model.db_conn import DBConn  # MongoDB 连接类
 
@@ -38,7 +38,8 @@ class User(DBConn):
         except jwt.exceptions.InvalidSignatureError as e:
             logging.error(str(e))
             return False
-
+        
+    # 注册
     def register(self, user_id: str, password: str):
         terminal = f"terminal_{time.time()}"
         token = jwt_encode(user_id, terminal)
@@ -52,81 +53,107 @@ class User(DBConn):
             })
         except DuplicateKeyError:
             return error.error_exist_user_id(user_id)
-        except Exception as e:
-            return 528, f"{str(e)}"
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
         return 200, "ok"
-
+    
+    # 检查权限
     def check_token(self, user_id: str, token: str):
-        user = self.user_col.find_one({"_id": user_id})
-        if not user:
-            return error.error_authorization_fail()
-        db_token = user.get("token")
-        if not self.__check_token(user_id, db_token, token):
-            return error.error_authorization_fail()
-        return 200, "ok"
-
+        try:
+            user = self.user_col.find_one({"_id": user_id})
+            if not user:
+                return error.error_authorization_fail()
+            db_token = user.get("token")
+            if not self.__check_token(user_id, db_token, token):
+                return error.error_authorization_fail()
+            return 200, "ok"
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
+    
+    # 检查密码
     def check_password(self, user_id: str, password: str):
-        user = self.user_col.find_one({"_id": user_id})
-        if not user or user.get("password") != password:
-            return error.error_authorization_fail()
-        return 200, "ok"
+        try:
+            user = self.user_col.find_one({"_id": user_id})
+            if not user or user.get("password") != password:
+                return error.error_authorization_fail()
+            return 200, "ok"
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
 
+    # 登陆
     def login(self, user_id: str, password: str, terminal: str):
         token = ""
-        code, message = self.check_password(user_id, password)
-        if code != 200:
-            return code, message, ""
+        try:
+            code, message = self.check_password(user_id, password)
+            if code != 200:
+                return code, message, ""
 
-        token = jwt_encode(user_id, terminal)
-        result = self.user_col.update_one(
-            {"_id": user_id},
-            {"$set": {"token": token, "terminal": terminal}}
-        )
-        if result.matched_count == 0:
-            return error.error_authorization_fail() + ("",)
-        return 200, "ok", token
+            token = jwt_encode(user_id, terminal)
+            result = self.user_col.update_one(
+                {"_id": user_id},
+                {"$set": {"token": token, "terminal": terminal}}
+            )
+            if result.matched_count == 0:
+                return error.error_authorization_fail() + ("",)
+            return 200, "ok", token
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
 
+    #登出
     def logout(self, user_id: str, token: str):
-        code, message = self.check_token(user_id, token)
-        if code != 200:
-            return code, message
+        try:
+            code, message = self.check_token(user_id, token)
+            if code != 200:
+                return code, message
 
-        terminal = f"terminal_{time.time()}"
-        dummy_token = jwt_encode(user_id, terminal)
+            terminal = f"terminal_{time.time()}"
+            dummy_token = jwt_encode(user_id, terminal)
 
-        result = self.user_col.update_one(
-            {"_id": user_id},
-            {"$set": {"token": dummy_token, "terminal": terminal}}
-        )
-        if result.matched_count == 0:
-            return error.error_authorization_fail()
-        return 200, "ok"
+            result = self.user_col.update_one(
+                {"_id": user_id},
+                {"$set": {"token": dummy_token, "terminal": terminal}}
+            )
+            if result.matched_count == 0:
+                return error.error_authorization_fail()
+            return 200, "ok"
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
 
+    # 注销账户
     def unregister(self, user_id: str, password: str):
-        code, message = self.check_password(user_id, password)
-        if code != 200:
-            return code, message
+        try:
+            code, message = self.check_password(user_id, password)
+            if code != 200:
+                return code, message
 
-        result = self.user_col.delete_one({"_id": user_id})
-        if result.deleted_count == 0:
-            return error.error_authorization_fail()
-        return 200, "ok"
+            result = self.user_col.delete_one({"_id": user_id})
+            if result.deleted_count == 0:
+                return error.error_authorization_fail()
+            return 200, "ok"
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
 
+    # 修改密码
     def change_password(self, user_id: str, old_password: str, new_password: str):
-        code, message = self.check_password(user_id, old_password)
-        if code != 200:
-            return code, message
+        try:
+            code, message = self.check_password(user_id, old_password)
+            if code != 200:
+                return code, message
 
-        terminal = f"terminal_{time.time()}"
-        token = jwt_encode(user_id, terminal)
-        result = self.user_col.update_one(
-            {"_id": user_id},
-            {"$set": {
-                "password": new_password,
-                "token": token,
-                "terminal": terminal
-            }}
-        )
-        if result.matched_count == 0:
-            return error.error_authorization_fail()
-        return 200, "ok"
+            terminal = f"terminal_{time.time()}"
+            token = jwt_encode(user_id, terminal)
+            result = self.user_col.update_one(
+                {"_id": user_id},
+                {"$set": {
+                    "password": new_password,
+                    "token": token,
+                    "terminal": terminal
+                }}
+            )
+            if result.matched_count == 0:
+                return error.error_authorization_fail()
+            return 200, "ok"
+        except PyMongoError as e:
+            return 528, f"Database error: {str(e)}", ""
+
+###############待添加新功能
